@@ -19,7 +19,7 @@ date_type = type(hcd.iloc[1,0])
 # determine input concentration from col name
 if target_contaminant in hcd.columns:
     if(target_contaminant == 'CO2'):
-        input_concentration = [20, 10, 5, 4, 3, 2, 1.8, 1.4, 1.2, 1, 0]
+        input_concentration = [0, 20, 10, 5, 4, 3, 2, 1.8, 1.4, 1.2, 1]
 else:
     print('Target contaminant not found')
 
@@ -30,14 +30,15 @@ for name in hcd.columns:
         break
     col = col + 1
 
-concentration_CO2 = [[0],[0],[0],[0],[0],[0],[0],[0],[0]]
+concentration = []
+cycle_vals = []
+val_index = []
+cycle_index = []
 span = 5
-perc = 0.55
-j = 0
-# for col in range(1, 10):
+perc = 0.5
 row = 30
 i = 0
-while(row < (r_count-span)) and (j<9):
+while(row < (r_count-span)):
     # checks that values are non-NULL
     if(type(hcd.iloc[row, 0]) != date_type):
         break
@@ -50,34 +51,31 @@ while(row < (r_count-span)) and (j<9):
     # dependent on expected concentrations
     if exp_diff > theo_diff:
         calc = np.round(np.mean(hcd.iloc[(row-30):(row-14), col]), decimals = 4, out = None)
-        val = concentration_CO2[j]
-        val.append(calc)
+        cycle_vals.append(calc)
         if(i == 10):
-            j = j + 1
+            cycle_vals.sort(reverse = True)
+            print(cycle_vals)
+            concentration.append(cycle_vals)
+            cycle_vals = []
         i = (i + 1)%len(input_concentration)
-        row = row + 3*span
+        row = row + 6*span
     else:
         row = row + 1
 # if there are not the correct number of entries, the last non-NULL row value is used to calculate the final entry
-if(len(concentration_CO2[col-1]) < len(input_concentration)):
+if(len(concentration[col-1]) < len(input_concentration)):
     calc = np.round(np.mean(hcd.iloc[(row-30):(row-15), col]), decimals = 4, out = None)
-    val = concentration_CO2[col-1]
+    val = concentration[col-1]
     val.append(calc)
 
-for k in range(j+1):
-    if concentration_CO2[k-1][0] == 0:
-        del concentration_CO2[k-1][0]
-    concentration_CO2[k-1].sort(reverse = True)
-    print(concentration_CO2[k-1])
-
+input_concentration.sort(reverse = True)
 # average
-avg_response_concentration = np.mean(concentration_CO2, axis = 0)
+avg_response_concentration = np.mean(concentration, axis = 0)
 # std dev
-std_response_concentration = np.std(concentration_CO2, axis = 0)
+std_response_concentration = np.std(concentration, axis = 0)
 # var
-var_response_concentration = np.var(concentration_CO2, axis = 0)
+var_response_concentration = np.var(concentration, axis = 0)
 # std error
-se_response_concentration = sps.sem(concentration_CO2, axis = 0)
+se_response_concentration = sps.sem(concentration, axis = 0)
 
 # plotting
 area = np.pi*3
@@ -90,4 +88,3 @@ plt.errorbar(input_concentration, avg_response_concentration, yerr = se_response
 plt.show()
 # save figure
 plt.savefig('C:/Users/Tashi Wischmeyer/Documents/HCD_data_management/Test_curve.pdf')
-
