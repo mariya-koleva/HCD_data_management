@@ -10,7 +10,18 @@ import scipy.stats as sps
 # Access file location
 hcd_sheets_raw = pd.read_excel('C:/Users/Tashi Wischmeyer/Documents/HCD_data_management/Carbon_dioxide_unattended_CO2.xlsx', index_col = None, sheet_name = 'Raw_data')
 
-target_contaminant = input('What contaminant is the target for this test?')
+while True:
+    try:
+        target_contaminant = input('What contaminant is the target for this test?')
+    except ValueError:
+        print("Oopsie, I don't have the capability to deal with that contaminant.")
+        continue
+    else:
+        break
+if target_contaminant == "CO2":
+    print("This contaminant is in the databse and I'm proceeding with calculations.") 
+else:
+    print("Oopsie, not able to proceed further as it seems I cannot handle this contaminant.")
 
 hcd = pd.DataFrame(hcd_sheets_raw)
 r_count, c_count = hcd.shape
