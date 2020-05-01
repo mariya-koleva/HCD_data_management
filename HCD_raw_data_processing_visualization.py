@@ -51,6 +51,9 @@ while(row < (r_count-span)):
     # dependent on expected concentrations
     if exp_diff > theo_diff:
         calc = np.round(np.mean(hcd.iloc[(row-30):(row-14), col]), decimals = 4, out = None)
+        # if we have negative values, zero them because it doesn't make sense to have negatives
+        if(calc < 0):
+            calc = 0
         cycle_vals.append(calc)
         if(i == 10):
             cycle_vals.sort(reverse = True)
@@ -64,6 +67,9 @@ while(row < (r_count-span)):
 # if there are not the correct number of entries, the last non-NULL row value is used to calculate the final entry
 if(len(concentration[col-1]) < len(input_concentration)):
     calc = np.round(np.mean(hcd.iloc[(row-30):(row-15), col]), decimals = 4, out = None)
+    # if we have negative values, zero them because it doesn't make sense to have negatives
+    if(calc < 0):
+        calc = 0
     val = concentration[col-1]
     val.append(calc)
 
