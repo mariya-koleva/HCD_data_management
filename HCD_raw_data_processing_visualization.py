@@ -12,7 +12,18 @@ import sklearn.metrics as sk
 # Access file location
 hcd_sheets_raw = pd.read_excel('C:/Users/Tashi Wischmeyer/Documents/HCD_data_management/Carbon_dioxide_unattended_CO2.xlsx', index_col = None, sheet_name = 'Raw_data')
 
-target_contaminant = input('What contaminant is the target for this test?')
+while True:
+    try:
+        target_contaminant = input('What contaminant is the target for this test?')
+    except ValueError:
+        print("Oopsie, I don't have the capability to deal with that contaminant.")
+        continue
+    else:
+        break
+if target_contaminant == "CO2":
+    print("This contaminant is in the databse and I'm proceeding with calculations.") 
+else:
+    print("Oopsie, not able to proceed further as it seems I cannot handle this contaminant.")
 
 hcd = pd.DataFrame(hcd_sheets_raw)
 r_count, c_count = hcd.shape
@@ -53,6 +64,9 @@ while(row < (r_count-span)):
     # dependent on expected concentrations
     if exp_diff > theo_diff:
         calc = np.round(np.mean(hcd.iloc[(row-30):(row-14), col]), decimals = 4, out = None)
+        # if we have negative values, zero them because it doesn't make sense to have negatives
+        if(calc < 0):
+            calc = 0
         cycle_vals.append(calc)
         if(i == 10):
             cycle_vals.sort(reverse = True)
@@ -66,6 +80,9 @@ while(row < (r_count-span)):
 # if there are not the correct number of entries, the last non-NULL row value is used to calculate the final entry
 if(len(concentration[col-1]) < len(input_concentration)):
     calc = np.round(np.mean(hcd.iloc[(row-30):(row-15), col]), decimals = 4, out = None)
+    # if we have negative values, zero them because it doesn't make sense to have negatives
+    if(calc < 0):
+        calc = 0
     val = concentration[col-1]
     val.append(calc)
 
