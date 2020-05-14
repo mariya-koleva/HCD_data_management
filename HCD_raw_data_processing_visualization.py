@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import scipy.stats as sps
+import statsmodels.api as sm
+import sklearn.metrics as sk
 #==
 # HCD data
 #==
@@ -54,7 +56,7 @@ while(row < (r_count-span)):
         cycle_vals.append(calc)
         if(i == 10):
             cycle_vals.sort(reverse = True)
-            print(cycle_vals)
+            # print(cycle_vals)
             concentration.append(cycle_vals)
             cycle_vals = []
         i = (i + 1)%len(input_concentration)
@@ -77,14 +79,94 @@ var_response_concentration = np.var(concentration, axis = 0)
 # std error
 se_response_concentration = sps.sem(concentration, axis = 0)
 
+title_string_0 = 'FTIR Raw Data Curve for ' + target_contaminant
 # plotting
 area = np.pi*3
-figCO2calib = plt.scatter(input_concentration, avg_response_concentration, s = area, alpha = 0.5, c = 'k')
+twos = 2*np.ones(21, dtype = int)
+# fig, figCalib = plt.subplots(2,2)
+plt.subplot(221)
+plt.plot(input_concentration, avg_response_concentration, alpha = 0.5, c = 'b', marker = '.')
+plt.plot(range(21), twos, linestyle = ':', c = 'k')
 plt.ylim(ymax = 20, ymin = 0)
-plt.title('FTIR Calibration curve for CO2')
-plt.xlabel('Input concentration [ppm]')
-plt.ylabel('Response concentration [ppm]')
-plt.errorbar(input_concentration, avg_response_concentration, yerr = se_response_concentration)
-plt.show()
+plt.xlim(xmax = 20, xmin = 0)
+plt.title(title_string_0)
+plt.xlabel('Input Concentration [ppm]', fontsize = 8)
+plt.ylabel('Response Concentration [ppm]', fontsize = 8)
+plt.errorbar(input_concentration, avg_response_concentration, yerr = se_response_concentration, c = 'b', linestyle = 'none')
+plt.legend(['Average Response', '2ppm Regulation', 'Standard Error'], fontsize = 8)
+
+
+title_string_1 = 'FTIR Zero-Adjusted Curve for ' + target_contaminant
+# plotting
+plt.subplot(222)
+zeroed_avg_response = np.array(avg_response_concentration)
+zeroed_avg_response = zeroed_avg_response - avg_response_concentration[-1]
+plt.plot(input_concentration, zeroed_avg_response, alpha = 0.5, c = 'b', marker = '.')
+plt.plot(range(21), twos, linestyle = ':', c = 'k')
+plt.ylim(ymax = 20, ymin = 0)
+plt.xlim(xmax = 20, xmin = 0)
+plt.title(title_string_1)
+plt.xlabel('Input Concentration [ppm]', fontsize = 8)
+plt.ylabel('Response Concentration [ppm]', fontsize = 8)
+plt.errorbar(input_concentration, zeroed_avg_response, yerr = se_response_concentration, c = 'b', linestyle = 'none')
+plt.legend(['Average Response', '2ppm Regulation', 'Standard Error'], fontsize = 8)
+
+# linear regression using OLS from statsmodels.OLS
+avg_conc = pd.DataFrame(avg_response_concentration)
+conc = pd.DataFrame(concentration)
+conc = pd.DataFrame.transpose(conc, copy = False)
+in_conc = pd.DataFrame(input_concentration)
+model_OLS = sm.OLS(in_conc, avg_conc)
+results_OLS = model_OLS.fit()
+model_attributes = results_OLS.summary();
+test_conc = sm.add_constant(conc[0])
+predicted_OLS = results_OLS.predict(avg_conc)
+r2_OLS = round(results_OLS.rsquared, 5)
+params_OLS = np.array(results_OLS.params)
+
+title_string_2 = 'FTIR OLS Calibration for ' + target_contaminant
+# plotting for OLS
+plt.subplot(223)
+x = len(concentration)
+for i in range(x):
+    plt.scatter(conc[i], results_OLS.predict(conc[i]), s = area, alpha = 0.5, c = 'k')
+plt.plot(avg_conc, predicted_OLS, c = 'b')
+plt.plot(range(21), twos, linestyle = ':', c = 'k')
+plt.ylim(ymax = 20, ymin = 0)
+plt.xlim(xmax = 20, xmin = -0.5)
+plt.title(title_string_2)
+plt.text(8, 5, 'R2 = ' + str(r2_OLS), fontsize = 8)
+plt.text(8, 7, 'y=' + str(round(params_OLS[0], 5)) + '*x+' + str(0), fontsize = 8)
+plt.ylabel('Expected Concentration [ppm]', fontsize = 8)
+plt.xlabel('Response Concentration [ppm]', fontsize = 8)
+plt.legend(['Expected Response', '2ppm Regulation', 'Cycle Values'], fontsize = 8)
+
+# linear regression with OLS from numpy.polyfit
+model_polyfit = np.polyfit(avg_response_concentration, input_concentration, 1)
+predict_polyfit = np.poly1d(model_polyfit)
+
+r2_polyfit = round(sk.r2_score(input_concentration, predict_polyfit(avg_response_concentration)), 5)
+
+title_string_3 = 'FTIR Polyfit Calibration for ' + target_contaminant
+# plotting for polyfit
+plt.subplot(224)
+x = len(concentration)
+for i in range(x):
+    plt.scatter(concentration[i], predict_polyfit(concentration[i]), s = area, alpha = 0.5, c = 'k')
+plt.plot(avg_response_concentration, predict_polyfit(avg_response_concentration), c = 'b')
+plt.plot(range(21), twos, linestyle = ':', c = 'k')
+plt.title(title_string_3)
+plt.text(8, 5, 'R2 = ' + str(r2_polyfit), fontsize = 8)
+plt.text(8, 7, 'y=' + str(round(model_polyfit[0], 5)) + '*x+' + str(round(model_polyfit[1], 5)), fontsize = 8)
+plt.ylabel('Expected Concentration [ppm]', fontsize = 8)
+plt.xlabel('Response Concentration [ppm]', fontsize = 8)
+plt.ylim(ymax = 20, ymin = 0)
+plt.xlim(xmax = 20, xmin = -0.5)
+plt.legend(['Expected Response', '2ppm Regulation', 'Cycle Values'], fontsize = 8)
+
+plt.tight_layout(pad = 1, h_pad = 0.75, w_pad = 0.75)
+
 # save figure
 plt.savefig('C:/Users/Tashi Wischmeyer/Documents/HCD_data_management/Test_curve.pdf')
+
+plt.show()
