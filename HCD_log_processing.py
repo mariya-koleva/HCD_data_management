@@ -1,5 +1,10 @@
-# Script for readind and processing concentrations
+# File: HCD_log_processing.py
+# Brief: Script for reading and processing chemical concentrations from log files and groups of log files
+# Author: Tashi Wischmeyer
+# Date Created:
+# Date Updated: 07-29-2020
 
+# libraries in use
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -7,40 +12,101 @@ import scipy.stats as sps
 import statsmodels.api as sm
 import sklearn.metrics as sk
 import csv
+import os
 
-hcd_log_file = open("C:/Users/Tashi Wischmeyer/Documents/HCD_data_management/Quan 20-06-17 [Impurities in H2-Main-00001-190814-110155-1296].log", 'r')
-
-hcd_raw_rows = hcd_log_file.read().splitlines()
-hcd_log_file.close()
-
-hcd_raw_log = []
-for row in hcd_raw_rows:
-    if row:
-        row_parse = [col.strip() for col in row.split('\t') if col]
-        hcd_raw_log.append(row_parse)
-
-hcd = pd.DataFrame(hcd_raw_log[1:], columns = hcd_raw_log[0])
-r_count, c_count = hcd.shape
-date_type = type(hcd.iloc[1,0])
-
+# determine local directory and navigate to the Data subdirectory
+dir = os.path.dirname(__file__)
+data_dir = os.path.join(dir, 'Data')
+entries = os.listdir(data_dir)      # list of all files/folders in Data subdirectory
+print('Data files:')
 
 while True:
     try:
-        target_contaminant = input('What contaminant is the target for this test?')
+        # list all entries
+        for entry in entries:
+            print(entry)
+        print('\n')
+        # get user input to choose file/folder
+        file_name = input('Enter one of the above files or folders to analyze:\t')
+    except:
+        # print error and continue if invalid
+        if file_name not in entries:
+            print('Error: File or folder not recognized')
+            continue
+    else:
+        break
+
+# determine new file path
+file_path = os.path.join(data_dir, file_name)
+
+hcd_raw_log = []
+# if the file path point to a file, only one file will be processed
+if os.path.isfile(file_path):
+    # open file and read in all rows
+    hcd_log_file = open(file_path, 'r')
+    hcd_raw_rows = hcd_log_file.read().splitlines()
+    hcd_log_file.close()
+    # parse each row and split by tab delimiter to get elements
+    for row in hcd_raw_rows:
+        if row:
+            row_parse = [col.strip() for col in row.split('\t') if col]
+            hcd_raw_log.append(row_parse)
+# if the file path is a directory, multiple files must be processed
+elif os.path.isdir(file_path):
+    data_files = os.listdir(file_path)      # list files in directory
+    # process each file and read all rows
+    for i in range(len(data_files)):
+        # determine each file path
+        data_file_path = os.path.join(file_path, data_files[i])
+        # open file and read in all rows
+        hcd_log_file = open(data_file_path, 'r')
+        hcd_raw_rows = hcd_log_file.read().splitlines()
+        hcd_log_file.close()
+
+
+        head = 0    # indicates if the header has been deleted
+        # parse each row and split by tab delimiter to get elements
+        for row in hcd_raw_rows:
+            if row:
+                row_parse = [col.strip() for col in row.split('\t') if col]
+                hcd_raw_log.append(row_parse)
+            # delete header from all files but the first
+            if (head == 0) and (i > 0):
+                del hcd_raw_log[-1]
+                head = 1
+else:
+    print('Error: Path not recognized.')
+    exit()
+
+# convert array to a DataFrame with the first row as the header
+hcd = pd.DataFrame(hcd_raw_log[1:], columns = hcd_raw_log[0])
+# get number of row and column elements
+r_count, c_count = hcd.shape
+
+while True:
+    try:
+        # get user input for target contaminant
+        target_contaminant = input('What contaminant is the target for this test?\t')
     except ValueError:
-        print("I don't have the capability to deal with that contaminant.")
+        # error if invalid input
+        print('I don''t have the capability to deal with that contaminant.')
         exit()
     else:
         break
 
-# determine input concentration from col name
+# determine input concentration and processing variables from col name
 contaminant_name = target_contaminant+"(PPM)"
 if contaminant_name in hcd.columns:
     if(target_contaminant == "CO2"):
         input_concentration = [0, 20, 10, 5, 4, 3, 2, 1.8, 1.4, 1.2, 1]
-    if(target_contaminant == "HCHO"):
-        input_concentration = [0, 6.2, 3.30, 2.27, 1.13, 0.559, 0.331]
+        span = 5
+        perc = 0.5
+    elif(target_contaminant == "HCHO"):
+        input_concentration = [0, 5.7, 3.04, 2.09, 1.045, 0.513, 0.304]
+        span = 5
+        perc = 0.45
 else:
+    # error if contaminant is not in the file
     print('Target contaminant not found')
     exit()
 
@@ -48,7 +114,6 @@ else:
 col = 0
 for name in hcd.columns:
     if name == contaminant_name:
-        print(col)
         break
     col = col + 1
 # convert column to floating point numerical data
@@ -59,48 +124,49 @@ concentration = []
 cycle_vals = []
 val_index = []
 cycle_index = []
-span = 5
-perc = 0.5
 row = 30
 i = 0
 while(row < (r_count-span)):
-    # checks that values are non-NULL
-    if(type(hcd.iloc[row, 0]) != date_type):
-        break
-    # experimental difference of 5 pt averages
+    # determine current calculation
+    calc = np.round(np.mean(hcd.iloc[(row-30):(row-14), col]), decimals = 4, out = None)
+    next_conc = input_concentration[(i+1)%len(input_concentration)]
+    # experimental difference of multi-pt averages
     exp_diff = np.abs(np.mean(hcd.iloc[(row-span):row, col]) - np.mean(hcd.iloc[(row+span):(row+2*span), col]))
     # threshold for theoretical difference between concentrations
-    theo_diff = np.abs((input_concentration[i]-input_concentration[(i+1)%len(input_concentration)])*perc)
+    theo_diff = np.abs((input_concentration[i]-next_conc))
 
     # look for concentration change
-    # dependent on expected concentrations
-    if exp_diff > theo_diff:
-        calc = np.round(np.mean(hcd.iloc[(row-30):(row-14), col]), decimals = 4, out = None)
+    # should be lower than previous value and higher than next value
+    if (exp_diff > theo_diff*perc) and ((i < 2) or ((calc < input_concentration[i-1]*0.2 + input_concentration[i]*0.8) and (calc > next_conc*0.8))):
         # if we have negative values, zero them because it doesn't make sense to have negatives
         if(calc < 0):
             calc = 0
         cycle_vals.append(calc)
         # at the end of a full cycle, sort the concentration averages in descending order
         if(i == len(input_concentration)-1):
-            cycle_vals.sort(reverse = True)
             print(cycle_vals)
+            cycle_vals.sort(reverse = True)
             concentration.append(cycle_vals)
             cycle_vals = []
         i = (i + 1)%len(input_concentration)
-        row = row + 6*span
+        row = row + 4*span
     else:
         row = row + 1
-# if there are not the correct number of entries, the last non-NULL row value is used to calculate the final entry
 if not concentration:
+    print(cycle_vals)
     print("No cycles detected")
     exit()
-elif(len(concentration[col-1]) < len(input_concentration)):
+# if there are not the correct number of entries, the last non-NULL row value is used to calculate the final entry
+elif(len(concentration[-1]) < len(input_concentration)):
     calc = np.round(np.mean(hcd.iloc[(row-30):(row-14), col]), decimals = 4, out = None)
     # if we have negative values, zero them because it doesn't make sense to have negatives
     if(calc < 0):
         calc = 0
-    val = concentration[col-1]
+    val = concentration[-1]
+
     val.append(calc)
+    concentration[-1] = val
+
 
 input_concentration.sort(reverse = True)
 # average
@@ -120,8 +186,8 @@ twos = 2*np.ones(21, dtype = int)
 plt.subplot(221)
 plt.plot(input_concentration, avg_response_concentration, alpha = 0.5, c = 'b', marker = '.')
 plt.plot(range(21), twos, linestyle = ':', c = 'k')
-plt.ylim(ymax = 20, ymin = 0)
-plt.xlim(xmax = 20, xmin = 0)
+plt.ylim(ymax = max(input_concentration), ymin = 0)
+plt.xlim(xmax = max(input_concentration), xmin = -0.5)
 plt.title(title_string_0)
 plt.xlabel('Input Concentration [ppm]', fontsize = 8)
 plt.ylabel('Response Concentration [ppm]', fontsize = 8)
@@ -136,8 +202,8 @@ zeroed_avg_response = np.array(avg_response_concentration)
 zeroed_avg_response = zeroed_avg_response - avg_response_concentration[-1]
 plt.plot(input_concentration, zeroed_avg_response, alpha = 0.5, c = 'b', marker = '.')
 plt.plot(range(21), twos, linestyle = ':', c = 'k')
-plt.ylim(ymax = 20, ymin = 0)
-plt.xlim(xmax = 20, xmin = 0)
+plt.ylim(ymax = max(input_concentration), ymin = 0)
+plt.xlim(xmax = max(input_concentration), xmin = -0.5)
 plt.title(title_string_1)
 plt.xlabel('Input Concentration [ppm]', fontsize = 8)
 plt.ylabel('Response Concentration [ppm]', fontsize = 8)
@@ -165,8 +231,8 @@ for i in range(x):
     plt.scatter(conc[i], results_OLS.predict(conc[i]), s = area, alpha = 0.5, c = 'k')
 plt.plot(avg_conc, predicted_OLS, c = 'b')
 plt.plot(range(21), twos, linestyle = ':', c = 'k')
-plt.ylim(ymax = 20, ymin = 0)
-plt.xlim(xmax = 20, xmin = -0.5)
+plt.ylim(ymax = max(input_concentration), ymin = 0)
+plt.xlim(xmax = max(input_concentration), xmin = -0.5)
 plt.title(title_string_2)
 plt.text(8, 5, 'R2 = ' + str(r2_OLS), fontsize = 8)
 plt.text(8, 7, 'y=' + str(round(params_OLS[0], 5)) + '*x+' + str(0), fontsize = 8)
@@ -193,8 +259,8 @@ plt.text(8, 5, 'R2 = ' + str(r2_polyfit), fontsize = 8)
 plt.text(8, 7, 'y=' + str(round(model_polyfit[0], 5)) + '*x+' + str(round(model_polyfit[1], 5)), fontsize = 8)
 plt.ylabel('Expected Concentration [ppm]', fontsize = 8)
 plt.xlabel('Response Concentration [ppm]', fontsize = 8)
-plt.ylim(ymax = 20, ymin = 0)
-plt.xlim(xmax = 20, xmin = -0.5)
+plt.ylim(ymax = max(input_concentration), ymin = 0)
+plt.xlim(xmax = max(input_concentration), xmin = -0.5)
 plt.legend(['Expected Response', '2ppm Regulation', 'Cycle Values'], fontsize = 8)
 
 plt.tight_layout(pad = 1, h_pad = 0.75, w_pad = 0.75)
