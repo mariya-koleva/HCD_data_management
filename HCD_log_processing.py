@@ -105,6 +105,18 @@ if contaminant_name in hcd.columns:
         input_concentration = [0, 5.7, 3.04, 2.09, 1.045, 0.513, 0.304]
         span = 5
         perc = 0.45
+    elif(target_contaminant == 'H2O'):
+        input_concentration = [0, 50, 25, 12.5, 10, 7.5, 5, 4.5, 3.5, 3, 2.5]
+        span = 5
+        perc = 0.5
+    elif(target_contaminant == 'NH3'):
+        input_concentration = [0, 1, 0.7, 0.3, 0.1, 0.08, 0.07, 0.05, 0.03]
+        span = 5
+        perc = 0.5
+    elif(target_contaminant == 'CO'):
+        input_concentration = [0, 2, 1, 0.5, 0.4, 0.3, 0.2, 0.18, 0.14, 0.12, 0.1]
+        span = 5
+        perc = 0.5
 else:
     # error if contaminant is not in the file
     print('Target contaminant not found')
