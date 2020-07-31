@@ -112,6 +112,10 @@ if contaminant_name in hcd.columns:
         input_concentration = [0, 20, 10, 5, 4, 3, 2, 1.8, 1.4, 1.2, 1]
         span = 5
         perc = 0.5
+    if(target_contaminant == "CH4"):
+        input_concentration = [0, 20, 10, 5, 4, 3, 2, 1.8, 1.4, 1.2, 1]
+        span = 5
+        perc = 0.5
     elif(target_contaminant == "HCHO"):
         input_concentration = [0, 5.7, 3.04, 2.09, 1.045, 0.513, 0.304]
         span = 5
@@ -260,7 +264,7 @@ plt.ylim(ymax = max(input_concentration)+0.1*max(input_concentration), ymin = 0)
 plt.xlim(xmax = max(input_concentration)+0.1*max(input_concentration), xmin = -0.5)
 ax3.set_title(title_string_2)
 ax3.text(3, 1, 'R2 = ' + str(r2_OLS), fontsize = 8)
-ax3.text(3, 1.3, 'y=' + str(round(params_OLS[0], 5)) + '*x+' + str(0), fontsize = 8)
+ax3.text(3, 1.5, 'y=' + str(round(params_OLS[0], 5)) + '*x+' + str(0), fontsize = 8)
 ax3.set_ylabel('Expected Concentration [ppm]', fontsize = 8)
 ax3.set_xlabel('Response Concentration [ppm]', fontsize = 8)
 plt.legend(['Expected Response', contaminant__stdlimit + ' ppm', 'Cycle Values'], fontsize = 8)
@@ -281,7 +285,7 @@ plt.plot(avg_response_concentration, predict_polyfit(avg_response_concentration)
 plt.plot(range(21), twos, linestyle = ':', c = 'k')
 ax4.set_title(title_string_3)
 ax4.text(3, 1, 'R2 = ' + str(r2_polyfit), fontsize = 8)
-ax4.text(3, 1.3, 'y=' + str(round(model_polyfit[0], 5)) + '*x+' + str(round(model_polyfit[1], 5)), fontsize = 8)
+ax4.text(3, 1.5, 'y=' + str(round(model_polyfit[0], 5)) + '*x+' + str(round(model_polyfit[1], 5)), fontsize = 8)
 ax4.set_ylabel('Expected Concentration [ppm]', fontsize = 8)
 ax4.set_xlabel('Response Concentration [ppm]', fontsize = 8)
 plt.ylim(ymax = max(input_concentration)+0.1*max(input_concentration), ymin = 0)
