@@ -118,20 +118,16 @@ if contaminant_name in hcd.columns:
         perc = 0.5
     elif(target_contaminant == "HCHO"):
         input_concentration = [0, 5.7, 3.04, 2.09, 1.045, 0.513, 0.304]
-        span = 5
-        perc = 0.45
+        span, perc = 5, 0.45
     elif(target_contaminant == 'H2O'):
         input_concentration = [0, 50, 25, 12.5, 10, 7.5, 5, 4.5, 3.5, 3, 2.5]
-        span = 5
-        perc = 0.5
+        span, perc = 5, 0.5
     elif(target_contaminant == 'NH3'):
         input_concentration = [0, 1, 0.7, 0.3, 0.1, 0.08, 0.07, 0.05, 0.03]
-        span = 5
-        perc = 0.5
+        span, perc = 5, 0.5
     elif(target_contaminant == 'CO'):
         input_concentration = [0, 2, 1, 0.5, 0.4, 0.3, 0.2, 0.18, 0.14, 0.12, 0.1]
-        span = 5
-        perc = 0.5
+        span, perc = 5, 0.5
 else:
     # error if contaminant is not in the file
     print('Target contaminant not found')
@@ -292,8 +288,7 @@ plt.ylim(ymax = max(input_concentration)+0.1*max(input_concentration), ymin = 0)
 plt.xlim(xmax = max(input_concentration)+0.1*max(input_concentration), xmin = -0.5)
 plt.legend(['Expected Response', contaminant__stdlimit + ' ppm', 'Cycle Values'], fontsize = 8)
 
-plt.tight_layout(pad = 1, h_pad = 0.75, w_pad = 0.75)
-
+plt.subplots_adjust(hspace = 0.5)
 # save figure
 figCalib.savefig(dir + '//' + 'Results\Calibration_curve_' + target_contaminant + '.pdf')
 
